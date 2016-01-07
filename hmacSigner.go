@@ -2,6 +2,7 @@ package jwt
 
 import (
 	"bytes"
+	"crypto"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
@@ -9,23 +10,6 @@ import (
 	"errors"
 	"hash"
 )
-
-const tokenName = "JWT"
-
-// header описывает заголовок токена с информацией о подписи.
-type header struct {
-	Alg string `json:"alg"`
-	Typ string `json:"typ"`
-}
-
-// getHeader возвращает сгенерированный заголовок токена с указанием алгоритма для подписи.
-func getHeader(alg string) string {
-	data, _ := json.Marshal(header{
-		Alg: alg,
-		Typ: tokenName,
-	})
-	return base64.RawURLEncoding.EncodeToString(data)
-}
 
 // Signer описывает информацию для подписи токена.
 type Signer struct {
@@ -43,7 +27,23 @@ func NewSignerHS256(key []byte) *Signer {
 	}
 }
 
-var tokenDivider = []byte{'.'} // разделитель частей токена
+// NewSignerHS384 возвращает инициализированный подписчик токена.
+func NewSignerHS384(key []byte) *Signer {
+	return &Signer{
+		hash:   hmac.New(crypto.SHA384.New, key),
+		name:   "HS384",
+		header: getHeader("HS384"),
+	}
+}
+
+// NewSignerHS512 возвращает инициализированный подписчик токена.
+func NewSignerHS512(key []byte) *Signer {
+	return &Signer{
+		hash:   hmac.New(crypto.SHA512.New, key),
+		name:   "HS512",
+		header: getHeader("HS512"),
+	}
+}
 
 // Sign возвращает подписанный токен.
 func (s Signer) Sign(token []byte) []byte {
@@ -61,7 +61,7 @@ func (s Signer) Sign(token []byte) []byte {
 
 // Parse разбирает токен и возвращает его содержимое.
 func (s Signer) Parse(token []byte) ([]byte, error) {
-	parts := bytes.SplitN(token, tokenDivider, 3) // разделяем токен на составные части
+	parts := bytes.SplitN(token, []byte{'.'}, 3) // разделяем токен на составные части
 	if len(parts) != 3 {
 		return nil, errors.New("bad token parts")
 	}
