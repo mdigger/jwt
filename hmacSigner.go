@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto"
 	"crypto/hmac"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -20,7 +21,7 @@ type Signer struct {
 // NewSignerHS256 возвращает инициализированный подписчик токена.
 func NewSignerHS256(key []byte) *Signer {
 	return &Signer{
-		hash:   hmac.New(crypto.SHA256.New, key),
+		hash:   hmac.New(sha256.New, key),
 		name:   "HS256",
 		header: getHeader("HS256"),
 	}
