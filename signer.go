@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/hmac"
 	"crypto/sha256"
+	"crypto/sha512"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -26,23 +27,23 @@ func NewSignerHS256(key []byte) *Signer {
 	}
 }
 
-// // NewSignerHS384 возвращает инициализированный подписчик токена.
-// func NewSignerHS384(key []byte) *Signer {
-// 	return &Signer{
-// 		hash:   hmac.New(sha512.New384, key),
-// 		name:   "HS384",
-// 		header: getHeader("HS384"),
-// 	}
-// }
+// NewSignerHS384 возвращает инициализированный подписчик токена.
+func NewSignerHS384(key []byte) *Signer {
+	return &Signer{
+		hash:   hmac.New(sha512.New384, key),
+		name:   "HS384",
+		header: getHeader("HS384"),
+	}
+}
 
-// // NewSignerHS512 возвращает инициализированный подписчик токена.
-// func NewSignerHS512(key []byte) *Signer {
-// 	return &Signer{
-// 		hash:   hmac.New(sha512.New, key),
-// 		name:   "HS512",
-// 		header: getHeader("HS512"),
-// 	}
-// }
+// NewSignerHS512 возвращает инициализированный подписчик токена.
+func NewSignerHS512(key []byte) *Signer {
+	return &Signer{
+		hash:   hmac.New(sha512.New, key),
+		name:   "HS512",
+		header: getHeader("HS512"),
+	}
+}
 
 // Sign возвращает подписанный токен.
 func (s Signer) Sign(token []byte) []byte {
