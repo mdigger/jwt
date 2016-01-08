@@ -1,7 +1,6 @@
 package jwt
 
 import (
-	"crypto/rand"
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
@@ -11,25 +10,19 @@ import (
 	"github.com/kr/pretty"
 )
 
+var key = []byte(`TOPSECRET`)
+
 func TestSign(t *testing.T) {
-	key := make([]byte, 1<<8)
-	if _, err := rand.Read(key); err != nil {
-		t.Error(err)
-	}
 	s := NewSignerHS256(key)
-	for i := 0; i < 10; i++ {
-		s.hash.Reset()
-		s.hash.Write([]byte("test"))
-		sum := s.hash.Sum(nil)
-		fmt.Println(hex.EncodeToString(sum), len(sum))
+	s.hash.Reset()
+	s.hash.Write([]byte("test"))
+	sum := s.hash.Sum(nil)
+	if hex.EncodeToString(sum) != `a3174174280008f8fcf2aa9aef674e26c8d66e2746ada2b8428279c090594fd9` {
+		t.Error("bad sign")
 	}
 }
 
 func TestMap(t *testing.T) {
-	key := make([]byte, 1<<8)
-	if _, err := rand.Read(key); err != nil {
-		t.Error(err)
-	}
 	fmt.Println("key:", base64.RawURLEncoding.EncodeToString(key))
 	var tmpl = &Template{
 		Issuer:   "i am",

@@ -2,7 +2,6 @@ package jwt
 
 import (
 	"bytes"
-	"crypto"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
@@ -18,7 +17,7 @@ type Signer struct {
 	header string    // сформированный заголовок токена для данного алгоритма
 }
 
-// NewSignerHS256 возвращает инициализированный подписчик токена.
+// NewSignerHS256 возвращает инициализированный подписчик токена, основанный на алгоритме SHA256.
 func NewSignerHS256(key []byte) *Signer {
 	return &Signer{
 		hash:   hmac.New(sha256.New, key),
@@ -27,23 +26,23 @@ func NewSignerHS256(key []byte) *Signer {
 	}
 }
 
-// NewSignerHS384 возвращает инициализированный подписчик токена.
-func NewSignerHS384(key []byte) *Signer {
-	return &Signer{
-		hash:   hmac.New(crypto.SHA384.New, key),
-		name:   "HS384",
-		header: getHeader("HS384"),
-	}
-}
+// // NewSignerHS384 возвращает инициализированный подписчик токена.
+// func NewSignerHS384(key []byte) *Signer {
+// 	return &Signer{
+// 		hash:   hmac.New(sha512.New384, key),
+// 		name:   "HS384",
+// 		header: getHeader("HS384"),
+// 	}
+// }
 
-// NewSignerHS512 возвращает инициализированный подписчик токена.
-func NewSignerHS512(key []byte) *Signer {
-	return &Signer{
-		hash:   hmac.New(crypto.SHA512.New, key),
-		name:   "HS512",
-		header: getHeader("HS512"),
-	}
-}
+// // NewSignerHS512 возвращает инициализированный подписчик токена.
+// func NewSignerHS512(key []byte) *Signer {
+// 	return &Signer{
+// 		hash:   hmac.New(sha512.New, key),
+// 		name:   "HS512",
+// 		header: getHeader("HS512"),
+// 	}
+// }
 
 // Sign возвращает подписанный токен.
 func (s Signer) Sign(token []byte) []byte {
