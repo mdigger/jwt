@@ -2,9 +2,20 @@ package jwt
 
 import (
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"testing"
 )
+
+func TestSign(t *testing.T) {
+	s := NewSignerHS256(key)
+	s.hash.Reset()
+	s.hash.Write([]byte("test"))
+	sum := s.hash.Sum(nil)
+	if hex.EncodeToString(sum) != `a3174174280008f8fcf2aa9aef674e26c8d66e2746ada2b8428279c090594fd9` {
+		t.Error("bad sign")
+	}
+}
 
 func TestSigner(t *testing.T) {
 	signer := NewSignerHS256([]byte(`top secret`))
