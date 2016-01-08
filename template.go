@@ -15,10 +15,9 @@ type Template struct {
 	Issuer    string        // кто выдал
 	Subject   string        // тема
 	Audience  []string      // кому предназначен
-	Expire    time.Duration // время жизни
 	Created   bool          // добавлять дату и время создания
-	NotBefore bool          // добавлять время начала использования
-	UniqueID  func() string // функция для генерации уникального идентификатора
+	Expire    time.Duration // время жизни
+	NotBefore time.Duration // добавлять время начала использования
 	Signer    *Signer       // генератор подписи
 }
 
@@ -47,16 +46,11 @@ func (t *Template) Token(obj interface{}) (token []byte, err error) {
 	if t.Expire > 0 {
 		dict["exp"] = now.Add(t.Expire).Unix()
 	}
-	if t.NotBefore {
-		dict["nbf"] = now.Unix()
-		if t.Created {
-			dict["iat"] = now.Add(time.Second * -10).Unix()
-		}
-	} else if t.Created {
-		dict["iat"] = now.Unix()
+	if t.NotBefore != 0 {
+		dict["nbf"] = now.Add(t.NotBefore).Unix()
 	}
-	if t.UniqueID != nil {
-		dict["jid"] = t.UniqueID()
+	if t.Created {
+		dict["iat"] = now.Unix()
 	}
 	// добавляем пользовательские данные, если формат поддерживается
 	switch obj := obj.(type) {
@@ -135,14 +129,13 @@ func (t *Template) Parse(token []byte, obj interface{}) error {
 		return err
 	}
 	// для начала проверяем все стандартные поля из шаблона
-	type Verify struct {
+	var verify struct {
 		Issuer    string `json:"iss"`
 		Subject   string `json:"sub"`
-		Expire    int64  `json:"exp"`
 		Created   int64  `json:"iat"`
+		Expire    int64  `json:"exp"`
 		NotBefore int64  `json:"nbf"`
 	}
-	var verify Verify
 	if err := json.Unmarshal(data, &verify); err != nil {
 		return err
 	}
@@ -152,21 +145,21 @@ func (t *Template) Parse(token []byte, obj interface{}) error {
 	if t.Subject != "" && t.Subject != verify.Subject {
 		return errors.New("bad subject")
 	}
+	if t.Created && verify.Created == 0 {
+		return errors.New("created not set")
+	}
 	if t.Expire != 0 && verify.Expire == 0 {
 		return errors.New("expire not set")
+	}
+	if t.NotBefore != 0 && verify.NotBefore == 0 {
+		return errors.New("notBefore not set")
 	}
 	now := time.Now().UTC()
 	if verify.Expire > 0 && time.Unix(verify.Expire, 0).Before(now) {
 		return errors.New("token expired")
 	}
-	if t.Created && verify.Created == 0 {
-		return errors.New("created not set")
-	}
 	if verify.Created > 0 && time.Unix(verify.Created, 0).After(now) {
 		return errors.New("bad create date & time")
-	}
-	if t.NotBefore && verify.NotBefore == 0 {
-		return errors.New("nbf not set")
 	}
 	if verify.NotBefore > 0 && time.Unix(verify.NotBefore, 0).After(now) {
 		return errors.New("using before set time")
