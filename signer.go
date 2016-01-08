@@ -6,42 +6,37 @@ import (
 	"crypto/sha256"
 	"crypto/sha512"
 	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"hash"
 )
 
 // Signer описывает информацию для подписи токена.
 type Signer struct {
-	hash   hash.Hash // алгоритм генерации подписи
-	name   string    // название алгоритма
-	header string    // сформированный заголовок токена для данного алгоритма
+	hash hash.Hash // алгоритм генерации подписи
+	name string    // название алгоритма
 }
 
-// NewSignerHS256 возвращает инициализированный подписчик токена, основанный на алгоритме SHA256.
+// NewSigner возвращает инициализированный подписчик токена, основанный на алгоритме SHA256.
 func NewSignerHS256(key []byte) *Signer {
 	return &Signer{
-		hash:   hmac.New(sha256.New, key),
-		name:   "HS256",
-		header: getHeader("HS256"),
+		hash: hmac.New(sha256.New, key),
+		name: "HS256",
 	}
 }
 
-// NewSignerHS384 возвращает инициализированный подписчик токена.
+// NewSignerHS384 возвращает инициализированный подписчик токена, основанный на алгоритме SHA384.
 func NewSignerHS384(key []byte) *Signer {
 	return &Signer{
-		hash:   hmac.New(sha512.New384, key),
-		name:   "HS384",
-		header: getHeader("HS384"),
+		hash: hmac.New(sha512.New384, key),
+		name: "HS384",
 	}
 }
 
-// NewSignerHS512 возвращает инициализированный подписчик токена.
+// NewSignerHS512 возвращает инициализированный подписчик токена, основанный на алгоритме SHA512.
 func NewSignerHS512(key []byte) *Signer {
 	return &Signer{
-		hash:   hmac.New(sha512.New, key),
-		name:   "HS512",
-		header: getHeader("HS512"),
+		hash: hmac.New(sha512.New, key),
+		name: "HS512",
 	}
 }
 
@@ -50,7 +45,7 @@ func (s Signer) Sign(token []byte) []byte {
 	// кодируем в строку и объединяем с заголовком
 	data := make([]byte, base64.RawURLEncoding.EncodedLen(len(token)))
 	base64.RawURLEncoding.Encode(data, token)
-	data = append(append([]byte(s.header), '.'), data...)
+	data = append(append(getHeader(s.name), '.'), data...)
 	s.hash.Reset()     // сбрасываем состояние
 	s.hash.Write(data) // добавляем содержимое токена для подсчета
 	// добавляем к токену подпись и возвращаем сам токен
@@ -71,9 +66,8 @@ func (s Signer) Parse(token []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	data = data[:n]
-	var header header // разбираем заголовок токена
-	if err := json.Unmarshal(data, &header); err != nil {
+	header, err := parseHeader(data[:n]) // разбираем заголовок токена
+	if err != nil {
 		return nil, err
 	}
 	if header.Typ != "" && header.Typ != tokenName {

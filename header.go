@@ -14,10 +14,18 @@ type header struct {
 }
 
 // getHeader возвращает сгенерированный заголовок токена с указанием алгоритма для подписи.
-func getHeader(alg string) string {
+func getHeader(alg string) []byte {
 	data, _ := json.Marshal(header{
 		Alg: alg,
 		Typ: tokenName,
 	})
-	return base64.RawURLEncoding.EncodeToString(data)
+	result := make([]byte, base64.RawURLEncoding.EncodedLen(len(data)))
+	base64.RawURLEncoding.Encode(result, data)
+	return result
+}
+
+func parseHeader(data []byte) (h *header, err error) {
+	h = new(header)
+	err = json.Unmarshal(data, h)
+	return
 }
