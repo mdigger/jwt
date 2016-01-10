@@ -16,7 +16,8 @@ type Signer struct {
 	name string    // название алгоритма
 }
 
-// NewSigner возвращает инициализированный подписчик токена, основанный на алгоритме SHA256.
+// NewSigner возвращает инициализированный подписчик токена, основанный на
+// алгоритме SHA256.
 func NewSignerHS256(key []byte) *Signer {
 	return &Signer{
 		hash: hmac.New(sha256.New, key),
@@ -24,7 +25,8 @@ func NewSignerHS256(key []byte) *Signer {
 	}
 }
 
-// NewSignerHS384 возвращает инициализированный подписчик токена, основанный на алгоритме SHA384.
+// NewSignerHS384 возвращает инициализированный подписчик токена, основанный на
+// алгоритме SHA384.
 func NewSignerHS384(key []byte) *Signer {
 	return &Signer{
 		hash: hmac.New(sha512.New384, key),
@@ -32,7 +34,8 @@ func NewSignerHS384(key []byte) *Signer {
 	}
 }
 
-// NewSignerHS512 возвращает инициализированный подписчик токена, основанный на алгоритме SHA512.
+// NewSignerHS512 возвращает инициализированный подписчик токена, основанный на
+// алгоритме SHA512.
 func NewSignerHS512(key []byte) *Signer {
 	return &Signer{
 		hash: hmac.New(sha512.New, key),
@@ -56,7 +59,8 @@ func (s Signer) Sign(token []byte) []byte {
 
 // Parse разбирает токен и возвращает его содержимое.
 func (s Signer) Parse(token []byte) ([]byte, error) {
-	parts := bytes.SplitN(token, []byte{'.'}, 3) // разделяем токен на составные части
+	// разделяем токен на составные части
+	parts := bytes.SplitN(token, []byte{'.'}, 3)
 	if len(parts) != 3 {
 		return nil, errors.New("bad token parts")
 	}

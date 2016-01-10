@@ -10,7 +10,8 @@ import (
 	"unicode"
 )
 
-// Template описывает основные поля токена, которые будут заполнены автоматически.
+// Template описывает основные поля токена, которые будут заполнены
+// автоматически.
 type Template struct {
 	Issuer    string        // кто выдал
 	Subject   string        // тема
@@ -21,8 +22,9 @@ type Template struct {
 	Signer    *Signer       // генератор подписи
 }
 
-// Token возвращает подписанный токен, сгенерированный на основании данных из шаблона и данных
-// пользователя. Подпись осуществляется методом, указанным в шаблоне.
+// Token возвращает подписанный токен, сгенерированный на основании данных из
+// шаблона и данных пользователя. Подпись осуществляется методом, указанным в
+// шаблоне.
 func (t *Template) Token(obj interface{}) (token []byte, err error) {
 	if t.Signer == nil {
 		return nil, errors.New("empty signer")
@@ -66,23 +68,28 @@ func (t *Template) Token(obj interface{}) (token []byte, err error) {
 		break
 	default: // возможно, что структура (поддерживаем только их)
 		v := reflect.ValueOf(obj)
-		if v.Kind() == reflect.Ptr { // если это указатель, то переключаемся на сам элемент
+		// если это указатель, то переключаемся на сам элемент
+		if v.Kind() == reflect.Ptr {
 			v = v.Elem()
 		}
-		if v.Kind() == reflect.Invalid { // если пустая не инициализированная структура
+		// если пустая не инициализированная структура
+		if v.Kind() == reflect.Invalid {
 			break
 		}
 		if v.Kind() != reflect.Struct { // это не структура
 			return nil, fmt.Errorf("unsupported type %T", obj)
 		}
-		typ := v.Type()                     // получаем информацию о типе структуры
-		for i := 0; i < v.NumField(); i++ { // перебираем все поля
+		// получаем информацию о типе структуры
+		typ := v.Type()
+		// перебираем все поля
+		for i := 0; i < v.NumField(); i++ {
 			field := typ.Field(i)
 			if field.PkgPath != "" {
 				continue // приватное поле
 			}
 			tag := field.Tag.Get("json") // получаем таг для JSON
-			// если таг для JSON не определен, а определено глобальное имя, то используем его
+			// если таг для JSON не определен, а определено глобальное имя,
+			// то используем его
 			if tag == "" && strings.Index(string(field.Tag), ":") < 0 {
 				tag = string(field.Tag)
 			}
@@ -124,7 +131,8 @@ func (t *Template) Parse(token []byte, obj interface{}) error {
 	if t.Signer == nil {
 		return errors.New("empty signer")
 	}
-	data, err := t.Signer.Parse(token) // разбираем токен и проверяем валидность подписи
+	// разбираем токен и проверяем валидность подписи
+	data, err := t.Signer.Parse(token)
 	if err != nil {
 		return err
 	}

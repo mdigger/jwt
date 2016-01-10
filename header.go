@@ -13,7 +13,8 @@ type header struct {
 	Typ string `json:"typ"`
 }
 
-// getHeader возвращает сгенерированный заголовок токена с указанием алгоритма для подписи.
+// getHeader возвращает сгенерированный заголовок токена с указанием алгоритма
+// для подписи.
 func getHeader(alg string) []byte {
 	data, _ := json.Marshal(header{
 		Alg: alg,
