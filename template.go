@@ -10,27 +10,25 @@ import (
 	"unicode"
 )
 
-// Template описывает основные поля токена, которые будут заполнены
-// автоматически.
+// Template describes the basic fields of token that will be filled in
+// automatically.
 type Template struct {
-	Issuer    string        // кто выдал
-	Subject   string        // тема
-	Audience  []string      // кому предназначен
-	Created   bool          // добавлять дату и время создания
-	Expire    time.Duration // время жизни
-	NotBefore time.Duration // добавлять время начала использования
-	Signer    *Signer       // генератор подписи
+	Issuer    string
+	Subject   string
+	Audience  []string
+	Created   bool
+	Expire    time.Duration
+	NotBefore time.Duration
+	Signer    *Signer
 }
 
-// Token возвращает подписанный токен, сгенерированный на основании данных из
-// шаблона и данных пользователя. Подпись осуществляется методом, указанным в
-// шаблоне.
+// Token returns the signed token generated based on the data from a template
+// and user data. The signature is made by the method specified in the template.
 func (t *Template) Token(obj interface{}) (token []byte, err error) {
 	if t.Signer == nil {
 		return nil, errors.New("empty signer")
 	}
 	dict := make(map[string]interface{})
-	// добавляем поля из шаблона
 	if t.Issuer != "" {
 		dict["iss"] = t.Issuer
 	}
@@ -54,89 +52,75 @@ func (t *Template) Token(obj interface{}) (token []byte, err error) {
 	if t.Created {
 		dict["iat"] = now.Unix()
 	}
-	// добавляем пользовательские данные, если формат поддерживается
 	switch obj := obj.(type) {
-	case map[string]string: // словарь строк (на всякий случай)
+	case map[string]string:
 		for key, value := range obj {
 			dict[key] = value
 		}
-	case map[string]interface{}: // словарь объектов
+	case map[string]interface{}:
 		for key, value := range obj {
 			dict[key] = value
 		}
 	case nil:
 		break
-	default: // возможно, что структура (поддерживаем только их)
+	default:
 		v := reflect.ValueOf(obj)
-		// если это указатель, то переключаемся на сам элемент
 		if v.Kind() == reflect.Ptr {
 			v = v.Elem()
 		}
-		// если пустая не инициализированная структура
 		if v.Kind() == reflect.Invalid {
 			break
 		}
-		if v.Kind() != reflect.Struct { // это не структура
+		if v.Kind() != reflect.Struct {
 			return nil, fmt.Errorf("unsupported type %T", obj)
 		}
-		// получаем информацию о типе структуры
 		typ := v.Type()
-		// перебираем все поля
 		for i := 0; i < v.NumField(); i++ {
 			field := typ.Field(i)
 			if field.PkgPath != "" {
-				continue // приватное поле
+				continue // private field
 			}
-			tag := field.Tag.Get("json") // получаем таг для JSON
-			// если таг для JSON не определен, а определено глобальное имя,
-			// то используем его
+			tag := field.Tag.Get("json")
 			if tag == "" && strings.Index(string(field.Tag), ":") < 0 {
 				tag = string(field.Tag)
 			}
-			if tag == "-" { // указано игнорировать
+			if tag == "-" {
 				continue
 			}
-			value := v.Field(i) // получаем значение
-			// проверяем, что у тега есть параметры
+			value := v.Field(i)
 			if indx := strings.IndexRune(tag, ','); indx >= 0 {
-				// игнорируем пустые значения если указано
 				if strings.Contains(tag[indx+1:], "omitempty") {
 					zero := reflect.Zero(value.Type()).Interface()
 					if reflect.DeepEqual(value.Interface(), zero) {
 						continue
 					}
 				}
-				tag = tag[:indx] // название будет первым полем
+				tag = tag[:indx]
 			}
-			// если имя не задано через тег, то используем имя поля
 			if tag == "" {
 				runes := []rune(field.Name)
-				runes[0] = unicode.ToLower(runes[0]) // первая буква маленькая
+				runes[0] = unicode.ToLower(runes[0])
 				tag = string(runes)
 			}
-			dict[tag] = value.Interface() // сохраняем значение
+			dict[tag] = value.Interface()
 		}
 	}
-	// декодируем в JSON
 	data, err := json.Marshal(dict)
 	if err != nil {
 		return nil, err
 	}
-	// получили полностью сформированный словарь токена — подписываем его.
 	return t.Signer.Sign(data), nil
 }
 
-// Parse разбирает токен и десериализует его содержимое в указанный объект.
+// Parse parses a token and deserializes its contents to the specified object.
 func (t *Template) Parse(token []byte, obj interface{}) error {
 	if t.Signer == nil {
 		return errors.New("empty signer")
 	}
-	// разбираем токен и проверяем валидность подписи
 	data, err := t.Signer.Parse(token)
 	if err != nil {
 		return err
 	}
-	// для начала проверяем все стандартные поля из шаблона
 	var verify struct {
 		Issuer    string `json:"iss"`
 		Subject   string `json:"sub"`
@@ -173,7 +157,7 @@ func (t *Template) Parse(token []byte, obj interface{}) error {
 		return errors.New("using before set time")
 	}
 
-	if obj != nil { // десериализуем данные пользователя в указанный им объект
+	if obj != nil {
 		return json.Unmarshal(data, obj)
 	}
 	return nil

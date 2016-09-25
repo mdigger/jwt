@@ -8,26 +8,26 @@ import (
 )
 
 func Example() {
-	// создаем шаблон и описываем в нем те вещи, которые
-	// мы хотели бы включать во все токены
+	// create a pattern and describe in it the things that we would like to
+	// include all the tokens
 	tmpl := &jwt.Template{
 		Issuer:  "me.mdigger.test",
 		Expire:  time.Hour,
 		Created: true,
 		Signer:  jwt.NewSignerHS256([]byte(`top secret`)),
 	}
-	// описываем дополнительные поля токена (можно структурой)
+	// describe additional fields of token (structure)
 	data := map[string]interface{}{
 		"user-id": "34529345",
 	}
-	// создаем и подписываем токен
+	// create and sign the token
 	token, err := tmpl.Token(data)
 	if err != nil {
 		fmt.Println("Error creating:", err)
 		return
 	}
-	// разбираем токен и получаем данные
-	// если токен не валиден, то вернется ошибка
+	// parse a token and get data
+	// if the token is not valid, then return an error
 	if err := tmpl.Parse(token, &data); err != nil {
 		fmt.Println("Error parsing:", err)
 		return

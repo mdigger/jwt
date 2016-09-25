@@ -7,14 +7,14 @@ import (
 
 const tokenName = "JWT"
 
-// header описывает заголовок токена с информацией о подписи.
+// header describes the header token with information about the signature.
 type header struct {
 	Alg string `json:"alg"`
 	Typ string `json:"typ"`
 }
 
-// getHeader возвращает сгенерированный заголовок токена с указанием алгоритма
-// для подписи.
+// getHeader returns the generated header token specifying the algorithm for
+// signing.
 func getHeader(alg string) []byte {
 	data, _ := json.Marshal(header{
 		Alg: alg,
@@ -25,6 +25,7 @@ func getHeader(alg string) []byte {
 	return result
 }
 
+// parseHeader parses the header of the token.
 func parseHeader(data []byte) (h *header, err error) {
 	h = new(header)
 	err = json.Unmarshal(data, h)

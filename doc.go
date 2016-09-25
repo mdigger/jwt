@@ -1,2 +1,2 @@
-// jwt поддерживает работу с токенами в формате JSON Web Token.
+// jwt supports tokens in the format of JSON Web Token.
 package jwt

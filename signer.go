@@ -10,14 +10,13 @@ import (
 	"hash"
 )
 
-// Signer описывает информацию для подписи токена.
+// Signer describes information for token-signing.
 type Signer struct {
-	hash hash.Hash // алгоритм генерации подписи
-	name string    // название алгоритма
+	hash hash.Hash // the generation algorithm of the signature
+	name string    // the name of the algorithm
 }
 
-// NewSigner возвращает инициализированный подписчик токена, основанный на
-// алгоритме SHA256.
+// NewSigner returns an initialized token-based algorithm is SHA256 algorithm.
 func NewSignerHS256(key []byte) *Signer {
 	return &Signer{
 		hash: hmac.New(sha256.New, key),
@@ -25,8 +24,7 @@ func NewSignerHS256(key []byte) *Signer {
 	}
 }
 
-// NewSignerHS384 возвращает инициализированный подписчик токена, основанный на
-// алгоритме SHA384.
+// NewSignerHS384 returns an initialized token-based algorithm is SHA384.
 func NewSignerHS384(key []byte) *Signer {
 	return &Signer{
 		hash: hmac.New(sha512.New384, key),
@@ -34,8 +32,7 @@ func NewSignerHS384(key []byte) *Signer {
 	}
 }
 
-// NewSignerHS512 возвращает инициализированный подписчик токена, основанный на
-// алгоритме SHA512.
+// NewSignerHS512 returns an initialized token-based algorithm is SHA512.
 func NewSignerHS512(key []byte) *Signer {
 	return &Signer{
 		hash: hmac.New(sha512.New, key),
@@ -43,34 +40,33 @@ func NewSignerHS512(key []byte) *Signer {
 	}
 }
 
-// Sign возвращает подписанный токен.
+// Sign returns the signed token.
 func (s Signer) Sign(token []byte) []byte {
-	// кодируем в строку и объединяем с заголовком
+	// encode to a string and combine it with a header
 	data := make([]byte, base64.RawURLEncoding.EncodedLen(len(token)))
 	base64.RawURLEncoding.Encode(data, token)
 	data = append(append(getHeader(s.name), '.'), data...)
-	s.hash.Reset()     // сбрасываем состояние
-	s.hash.Write(data) // добавляем содержимое токена для подсчета
-	// добавляем к токену подпись и возвращаем сам токен
+	s.hash.Reset()
+	s.hash.Write(data)
 	sign := make([]byte, base64.RawURLEncoding.EncodedLen(s.hash.Size()))
 	base64.RawURLEncoding.Encode(sign, s.hash.Sum(nil))
 	return append(append(data, '.'), sign...)
 }
 
-// Parse разбирает токен и возвращает его содержимое.
+// Parse parses a token and returns its contents.
 func (s Signer) Parse(token []byte) ([]byte, error) {
 	// разделяем токен на составные части
 	parts := bytes.SplitN(token, []byte{'.'}, 3)
 	if len(parts) != 3 {
 		return nil, errors.New("bad token parts")
 	}
-	// декодируем заголовок
+	// decode the header
 	data := make([]byte, base64.RawURLEncoding.DecodedLen(len(parts[0])))
 	n, err := base64.RawURLEncoding.Decode(data, parts[0])
 	if err != nil {
 		return nil, err
 	}
-	header, err := parseHeader(data[:n]) // разбираем заголовок токена
+	header, err := parseHeader(data[:n]) // parse the header token
 	if err != nil {
 		return nil, err
 	}
@@ -80,20 +76,20 @@ func (s Signer) Parse(token []byte) ([]byte, error) {
 	if header.Alg != s.name {
 		return nil, errors.New("bad token sign algorithm")
 	}
-	// декодируем подпись
+	// decode the signature
 	data = make([]byte, s.hash.Size())
 	if _, err := base64.RawURLEncoding.Decode(data, parts[2]); err != nil {
 		return nil, err
 	}
-	s.hash.Reset() // сбрасываем состояние
-	// считаем контрольную сумму токена, включая заголовок и содержимое
+	s.hash.Reset()
+	// consider the checksum of the token, including header and content
 	if _, err := s.hash.Write(token[:len(parts[0])+len(parts[1])+1]); err != nil {
-		return nil, err // ошибка подсчета подписи
+		return nil, err
 	}
-	if !hmac.Equal(s.hash.Sum(nil), data) { // сравниваем подписи
+	if !hmac.Equal(s.hash.Sum(nil), data) { // compare signature
 		return nil, errors.New("bad token sign")
 	}
-	// декодируем и возвращаем содержимое токена
+	// decode and return the contents of the token
 	data = make([]byte, base64.RawURLEncoding.DecodedLen(len(parts[1])))
 	n, err = base64.RawURLEncoding.Decode(data, parts[1])
 	if err != nil {
