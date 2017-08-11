@@ -1,99 +1,146 @@
 package jwt
 
 import (
-	"bytes"
+	"crypto"
+	"crypto/ecdsa"
 	"crypto/hmac"
-	"crypto/sha256"
-	"crypto/sha512"
-	"encoding/base64"
+	"crypto/rand"
+	"crypto/rsa"
+	_ "crypto/sha256" // импортируем явно для поддержки хеширования
 	"errors"
-	"hash"
+	"fmt"
+	"math/big"
 )
 
-// Signer describes information for token-signing.
-type Signer struct {
-	hash hash.Hash // the generation algorithm of the signature
-	name string    // the name of the algorithm
+// algorithm возвращает название алгоритма, используемого для подписи.
+func algorithm(key interface{}) (string, crypto.Hash) {
+	ecdsaParams := func(name string) (string, crypto.Hash) {
+		switch name {
+		case "P-256":
+			return "ES256", crypto.SHA256
+		case "P-384":
+			return "ES384", crypto.SHA384
+		case "P-521":
+			return "ES512", crypto.SHA512
+		default:
+			return "", 0
+		}
+	}
+	switch key := key.(type) {
+	case *rsa.PrivateKey, *rsa.PublicKey, rsa.PrivateKey, rsa.PublicKey:
+		return "RS256", crypto.SHA256
+	case *ecdsa.PrivateKey:
+		return ecdsaParams(key.Params().Name)
+	case *ecdsa.PublicKey:
+		return ecdsaParams(key.Params().Name)
+	case []byte, string, fmt.Stringer:
+		return "HS256", crypto.SHA256
+	}
+	return "none", 0
 }
 
-// NewSigner returns an initialized token-based algorithm is SHA256 algorithm.
-func NewSignerHS256(key []byte) *Signer {
-	return &Signer{
-		hash: hmac.New(sha256.New, key),
-		name: "HS256",
+// sign подписывает данные указанным ключем и возвращает сигнатуру подписи.
+// В качестве ключа можно указать *rsa.PrivateKey, *ecdsa.PrivateKey, []byte,
+// string или любой объект, поддерживающий fmt.Stringer. В последних трех
+// случаях для подписи будет использоваться алгоритм HS256.
+func sign(data []byte, key crypto.PrivateKey) ([]byte, error) {
+	_, hash := algorithm(key) // получаем алгоритм для хеширования данных
+	if !hash.Available() {
+		return nil, fmt.Errorf("unsupported hash for key type %T [%d]", key, hash)
+	}
+	// в зависимости от типа ключа используем разные алгоритмы
+repeat:
+	switch signerKey := key.(type) {
+	case *rsa.PrivateKey:
+		h := hash.New()
+		h.Write(data)
+		return signerKey.Sign(rand.Reader, h.Sum(nil), hash)
+
+	case *ecdsa.PrivateKey:
+		h := hash.New()
+		h.Write(data)
+		r, s, err := ecdsa.Sign(rand.Reader, signerKey, h.Sum(nil))
+		if err != nil {
+			return nil, err
+		}
+		rb, sb := r.Bytes(), s.Bytes()
+		size := signerKey.Params().BitSize / 8
+		if size%8 > 0 {
+			size++
+		}
+		signature := make([]byte, size*2)
+		copy(signature[size-len(rb):], rb)
+		copy(signature[size*2-len(sb):], sb)
+		return signature, nil
+
+	case []byte:
+		mac := hmac.New(hash.New, signerKey)
+		mac.Write(data)
+		return mac.Sum(nil), nil
+	case string:
+		key = []byte(signerKey)
+		goto repeat
+	case fmt.Stringer:
+		key = []byte(signerKey.String())
+		goto repeat
+
+	default:
+		return nil, fmt.Errorf("unsupported key type %T", key)
 	}
 }
 
-// NewSignerHS384 returns an initialized token-based algorithm is SHA384.
-func NewSignerHS384(key []byte) *Signer {
-	return &Signer{
-		hash: hmac.New(sha512.New384, key),
-		name: "HS384",
+// verify проверяет, что данные действительно подписаны данным ключем.
+// В качестве ключа можно указать *rsa.PrivateKey, *rsa.PublicKey,
+// *ecdsa.PrivateKey, *ecdsa.PublicKey, []byte, string или любой объект,
+// поддерживающий fmt.Stringer. В последних трех случаях для проверки подписи
+// будет использоваться алгоритм HS256.
+func verify(data, signature []byte, key interface{}) error {
+	_, hash := algorithm(key) // получаем алгоритм для хеширования данных
+	if !hash.Available() {
+		return fmt.Errorf("unsupported hash for key type %T [%d]", key, hash)
 	}
-}
+	// в зависимости от типа ключа используем разные алгоритмы
+repeat:
+	switch signerKey := key.(type) {
+	case *rsa.PublicKey: // проверяем подпись с публичным ключем RSA
+		h := hash.New()
+		h.Write(data)
+		return rsa.VerifyPKCS1v15(signerKey, crypto.SHA256, h.Sum(nil), signature)
+	case *rsa.PrivateKey: // подменяем ключ на публичный
+		key = &signerKey.PublicKey
+		goto repeat
 
-// NewSignerHS512 returns an initialized token-based algorithm is SHA512.
-func NewSignerHS512(key []byte) *Signer {
-	return &Signer{
-		hash: hmac.New(sha512.New, key),
-		name: "HS512",
-	}
-}
+	case *ecdsa.PublicKey: // выполняем проверку подписи ECDSA
+		h := hash.New()
+		h.Write(data)
+		// восстанавливаем значения r и s из сигнатуры
+		div := len(signature) / 2
+		r := new(big.Int).SetBytes(signature[:div])
+		s := new(big.Int).SetBytes(signature[div:])
+		if !ecdsa.Verify(signerKey, h.Sum(nil), r, s) {
+			return errors.New("bad ecdsa signature")
+		}
+		return nil
+	case *ecdsa.PrivateKey: // подменяем ключ на публичный
+		key = &signerKey.PublicKey
+		goto repeat
 
-// Sign returns the signed token.
-func (s Signer) Sign(token []byte) []byte {
-	// encode to a string and combine it with a header
-	data := make([]byte, base64.RawURLEncoding.EncodedLen(len(token)))
-	base64.RawURLEncoding.Encode(data, token)
-	data = append(append(getHeader(s.name), '.'), data...)
-	s.hash.Reset()
-	s.hash.Write(data)
-	sign := make([]byte, base64.RawURLEncoding.EncodedLen(s.hash.Size()))
-	base64.RawURLEncoding.Encode(sign, s.hash.Sum(nil))
-	return append(append(data, '.'), sign...)
-}
+	case []byte: // хешируем исходные данные и сравниваем с сохраненным хешом
+		mac := hmac.New(hash.New, signerKey)
+		mac.Write(data)
+		signature2 := mac.Sum(nil)
+		if !hmac.Equal(signature, signature2) {
+			return errors.New("bad hmac signature")
+		}
+		return nil
+	case string: // преобразуем формат ключа к бинарному и повторяем
+		key = []byte(signerKey)
+		goto repeat
+	case fmt.Stringer: // преобразуем формат ключа к бинарному и повторяем
+		key = []byte(signerKey.String())
+		goto repeat
 
-// Parse parses a token and returns its contents.
-func (s Signer) Parse(token []byte) ([]byte, error) {
-	// разделяем токен на составные части
-	parts := bytes.SplitN(token, []byte{'.'}, 3)
-	if len(parts) != 3 {
-		return nil, errors.New("bad token parts")
+	default:
+		return fmt.Errorf("unsupported key type %T", key)
 	}
-	// decode the header
-	data := make([]byte, base64.RawURLEncoding.DecodedLen(len(parts[0])))
-	n, err := base64.RawURLEncoding.Decode(data, parts[0])
-	if err != nil {
-		return nil, err
-	}
-	header, err := parseHeader(data[:n]) // parse the header token
-	if err != nil {
-		return nil, err
-	}
-	if header.Typ != "" && header.Typ != tokenName {
-		return nil, errors.New("bad token type")
-	}
-	if header.Alg != s.name {
-		return nil, errors.New("bad token sign algorithm")
-	}
-	// decode the signature
-	data = make([]byte, s.hash.Size())
-	if _, err := base64.RawURLEncoding.Decode(data, parts[2]); err != nil {
-		return nil, err
-	}
-	s.hash.Reset()
-	// consider the checksum of the token, including header and content
-	if _, err := s.hash.Write(token[:len(parts[0])+len(parts[1])+1]); err != nil {
-		return nil, err
-	}
-	if !hmac.Equal(s.hash.Sum(nil), data) { // compare signature
-		return nil, errors.New("bad token sign")
-	}
-	// decode and return the contents of the token
-	data = make([]byte, base64.RawURLEncoding.DecodedLen(len(parts[1])))
-	n, err = base64.RawURLEncoding.Decode(data, parts[1])
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
 }

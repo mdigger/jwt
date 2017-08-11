@@ -1,0 +1,47 @@
+package jwt
+
+import (
+	"testing"
+	"time"
+)
+
+func TestVerify(t *testing.T) {
+	payload := JSON{
+		"iss":      "http://service.example.com/",
+		"sub":      "2934852845",
+		"iat":      Time{time.Now()},
+		"exp":      Time{time.Now().Add(time.Hour)},
+		"name":     "Dmitry Sedykh",
+		"email":    "dmitrys@example.com",
+		"birthday": Time{time.Date(1971, time.December, 24, 0, 0, 0, 0, time.Local)},
+		"nonce":    Nonce(8)(),
+	}
+	token, err := Encode(payload, "my secret sign key", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// println("token:", token)
+
+	getKey := func(string) interface{} {
+		return "my secret sign key"
+	}
+	if err := Verify(token, getKey); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestVerifyNotSignedToken(t *testing.T) {
+	var conf = &Config{
+		Issuer: "http://service.example.com/",
+		Nonce:  Nonce(8),
+	}
+	token, err := conf.Token(JSON{"sub": "9394203942934"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// fmt.Println(token)
+	if err := Verify(token, ""); err.Error() != "token not signed" {
+		t.Fatal("bad verify unsigned token")
+	}
+
+}
