@@ -18,7 +18,7 @@ func init() {
 		"exp":      jwt.Time{time.Now().Add(time.Hour)},
 		"name":     "Dmitry Sedykh",
 		"email":    "dmitrys@example.com",
-		"birthday": jwt.Time{time.Date(1971, time.December, 24, 8, 43, 0, 0, time.Local)},
+		"birthday": jwt.Time{time.Date(1971, time.December, 24, 8, 43, 0, 0, time.UTC)},
 		"nonce":    jwt.Nonce(8)(),
 	}
 	var err error
@@ -160,7 +160,7 @@ func ExampleTime() {
 		log.Fatal(err)
 	}
 	fmt.Println(claimset.Birthday.UTC())
-	// Output: 1971-12-24 05:43:00 +0000 UTC
+	// Output: 1971-12-24 08:43:00 +0000 UTC
 }
 
 func ExampleKeys() {
