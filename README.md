@@ -19,13 +19,16 @@ func main() {
 	// include all the tokens
 	conf := &jwt.Config{
 		Issuer:  "me.mdigger.test",
-		Expire:  time.Hour,
+		Expires:  time.Hour,
 		Created: true,
 		Key:     `top secret`,
 	}
 	// describe additional fields of token (structure)
 	data := jwt.JSON{
-		"user-id": "34529345",
+		"sub": "34529345",
+		"email": "dmitrys@example.com",
+		"name": "Dmitry Sedykh",
+		"birthday": jwt.Time{time.Date(1971, time.December, 24, 0, 0, 0, 0, time.Local)},
 	}
 	// create and sign the token
 	token, err := conf.Token(data)
