@@ -32,11 +32,10 @@ type Config struct {
 	Expires   time.Duration // exp - добавлять время жизни
 	NotBefore time.Duration // nbf - добавлять время начала действия
 	Type      string        // typ - тип токена
-	Nonce     func() string // nonce - генератор случайной строки
+	UniqueID  func() string // nonce - генератор случайной строки
 	Private   JSON          // дополнительные именованные поля
 
-	Key   interface{} // ключ для подписи токена
-	KeyID string      // идентификатор ключа для подписи
+	Key interface{} // ключ для подписи токена или функция его возвращающая
 }
 
 // Token возвращает сгенерированный токен на основании шаблона и
@@ -83,8 +82,8 @@ func (c *Config) Token(claimset interface{}) (string, error) {
 	if c.Type != "" {
 		result["typ"] = c.Type
 	}
-	if c.Nonce != nil {
-		result["nonce"] = c.Nonce()
+	if c.UniqueID != nil {
+		result["jti"] = c.UniqueID()
 	}
 	// добавляем данные из объекта
 	switch claimset := claimset.(type) {
@@ -160,5 +159,5 @@ func (c *Config) Token(claimset interface{}) (string, error) {
 		}
 	}
 	// кодируем и возвращаем токен
-	return Encode(result, c.Key, c.KeyID)
+	return Encode(result, c.Key)
 }

@@ -14,15 +14,15 @@ func init() {
 	claimset := jwt.JSON{
 		"iss":      "http://service.example.com/",
 		"sub":      "2934852845",
-		"iat":      jwt.Time{time.Now()},
-		"exp":      jwt.Time{time.Now().Add(time.Hour)},
+		"iat":      jwt.Time{Time: time.Now()},
+		"exp":      jwt.Time{Time: time.Now().Add(time.Hour)},
 		"name":     "Dmitry Sedykh",
 		"email":    "dmitrys@example.com",
-		"birthday": jwt.Time{time.Date(1971, time.December, 24, 8, 43, 0, 0, time.UTC)},
+		"birthday": jwt.Time{Time: time.Date(1971, time.December, 24, 8, 43, 0, 0, time.UTC)},
 		"nonce":    jwt.Nonce(8)(),
 	}
 	var err error
-	token, err = jwt.Encode(claimset, "my secret sign key", "")
+	token, err = jwt.Encode(claimset, "my secret sign key")
 	if err != nil {
 		panic(err)
 	}
@@ -33,15 +33,15 @@ func ExampleEncode() {
 	claimset := jwt.JSON{
 		"iss":      "http://service.example.com/",
 		"sub":      "2934852845",
-		"iat":      jwt.Time{time.Now()},
-		"exp":      jwt.Time{time.Now().Add(time.Hour)},
+		"iat":      jwt.Time{Time: time.Now()},
+		"exp":      jwt.Time{Time: time.Now().Add(time.Hour)},
 		"name":     "Dmitry Sedykh",
 		"email":    "dmitrys@example.com",
-		"birthday": jwt.Time{time.Date(1971, time.December, 24, 0, 0, 0, 0, time.Local)},
+		"birthday": jwt.Time{Time: time.Date(1971, time.December, 24, 0, 0, 0, 0, time.Local)},
 		"nonce":    jwt.Nonce(8)(),
 	}
 	// создаем токен с подписью HS256 с секретным ключем
-	token, err := jwt.Encode(claimset, "my secret sign key", "")
+	token, err := jwt.Encode(claimset, "my secret sign key")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -89,8 +89,8 @@ func ExampleVerify() {
 
 func ExampleNonce() {
 	var conf = &jwt.Config{
-		Issuer: "http://service.example.com/",
-		Nonce:  jwt.Nonce(8), // задаем функцию генерации случайного nonce
+		Issuer:   "http://service.example.com/",
+		UniqueID: jwt.Nonce(8), // задаем функцию генерации случайного nonce
 	}
 	token, err := conf.Token(jwt.JSON{"sub": "9394203942934"})
 	if err != nil {
@@ -104,15 +104,15 @@ func ExampleJSON() {
 	claimset := jwt.JSON{
 		"iss":      "http://service.example.com/",
 		"sub":      "2934852845",
-		"iat":      jwt.Time{time.Now()},
-		"exp":      jwt.Time{time.Now().Add(time.Hour)},
+		"iat":      jwt.Time{Time: time.Now()},
+		"exp":      jwt.Time{Time: time.Now().Add(time.Hour)},
 		"name":     "Dmitry Sedykh",
 		"email":    "dmitrys@example.com",
-		"birthday": jwt.Time{time.Date(1971, time.December, 24, 0, 0, 0, 0, time.Local)},
+		"birthday": jwt.Time{Time: time.Date(1971, time.December, 24, 0, 0, 0, 0, time.Local)},
 		"nonce":    jwt.Nonce(8)(),
 	}
 	// создаем токен без подписи
-	token, err := jwt.Encode(claimset, nil, "")
+	token, err := jwt.Encode(claimset, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -122,12 +122,12 @@ func ExampleJSON() {
 func ExampleConfig() {
 	// инициализируем шаблон с описанием основных полей токена
 	var conf = &jwt.Config{
-		Issuer:  "http://test.example.com/auth",
-		Created: true,                   // добавлять дату создания
-		Expires: time.Hour,              // время жизни
-		Nonce:   jwt.Nonce(8),           // добавлять nonce
-		Private: jwt.JSON{"temp": true}, // дополнительные поля
-		Key:     jwt.NewRS256Key(),      // ключ для подписи
+		Issuer:   "http://test.example.com/auth",
+		Created:  true,                   // добавлять дату создания
+		Expires:  time.Hour,              // время жизни
+		UniqueID: jwt.Nonce(8),           // добавлять nonce
+		Private:  jwt.JSON{"temp": true}, // дополнительные поля
+		Key:      jwt.NewRS256Key(),      // ключ для подписи
 	}
 	// создаем токен с указанными полями
 	token, err := conf.Token(jwt.JSON{
@@ -161,14 +161,4 @@ func ExampleTime() {
 	}
 	fmt.Println(claimset.Birthday.UTC())
 	// Output: 1971-12-24 08:43:00 +0000 UTC
-}
-
-func ExampleKeys() {
-	keys, err := jwt.LoadKeys("https://www.googleapis.com/oauth2/v3/certs")
-	if err != nil {
-		log.Fatal(err)
-	}
-	if err = jwt.Verify(token, keys.Get); err != nil {
-		log.Fatal(err)
-	}
 }
