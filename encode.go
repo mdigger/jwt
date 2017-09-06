@@ -1,12 +1,8 @@
 package jwt
 
 import (
-	"crypto"
-	"crypto/ecdsa"
-	"crypto/rsa"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strings"
 )
@@ -25,15 +21,7 @@ import (
 //
 // Так же поддерживаются следующие форматы функции для передачи ключа:
 // 	func() interface{}
-// 	func() crypto.PrivateKey
-// 	func() *rsa.PrivateKey
-// 	func() *ecdsa.PrivateKey
-// 	func() []byte
 // 	func() string, interface{}
-// 	func() string, crypto.PrivateKey
-// 	func() string, *rsa.PrivateKey
-// 	func() string, *ecdsa.PrivateKey
-// 	func() string, []byte
 //
 // В последних случаях кроме ключа так же возвращается его идентификатор.
 func Encode(claimset, key interface{}) (string, error) {
@@ -45,32 +33,14 @@ func Encode(claimset, key interface{}) (string, error) {
 	// если для получения ключа задана функция, то вызываем ее
 	var keyID string // идентификатор ключа
 	switch fkey := key.(type) {
-	case nil:
-		return "", nil // проверка не требуется
 	case func() interface{}:
 		key = fkey()
-	case func() crypto.PrivateKey:
-		key = fkey()
-	case func() *rsa.PrivateKey:
-		key = fkey()
-	case func() *ecdsa.PrivateKey:
-		key = fkey()
-	case func() []byte:
-		key = fkey()
 	case func() (string, interface{}):
-		keyID, key = fkey()
-	case func() (string, crypto.PrivateKey):
-		keyID, key = fkey()
-	case func() (string, *rsa.PrivateKey):
-		keyID, key = fkey()
-	case func() (string, *ecdsa.PrivateKey):
-		keyID, key = fkey()
-	case func() (string, []byte):
 		keyID, key = fkey()
 	}
 	alg, hash := algorithm(key) // название алгоритма для подписи
 	if hash != 0 && !hash.Available() {
-		return "", errors.New("hash function for key is not availible")
+		return "", ErrBadHashFunc
 	}
 	// взводим флаг, что требуется подпись токена
 	signFlag := (key != nil && !strings.EqualFold(alg, "none"))

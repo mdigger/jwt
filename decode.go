@@ -3,7 +3,6 @@ package jwt
 import (
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"strings"
 	"time"
 )
@@ -13,7 +12,7 @@ import (
 func Decode(token string, claimset interface{}) error {
 	parts := strings.Split(token, ".")
 	if len(parts) != 3 {
-		return errors.New("invalid token")
+		return ErrInvalid
 	}
 	// разбираем основной раздел токена
 	data, err := base64.RawURLEncoding.DecodeString(parts[1])
@@ -31,13 +30,13 @@ func Decode(token string, claimset interface{}) error {
 	// проверяем поля со временем
 	now := time.Now() // текущее время
 	if !times.Created.IsZero() && times.Created.After(now) {
-		return errors.New("token created after now")
+		return ErrCreatedAfterNow
 	}
 	if !times.Expires.IsZero() && times.Expires.Before(now) {
-		return errors.New("token expired")
+		return ErrExpired
 	}
 	if !times.NotBefore.IsZero() && times.NotBefore.After(now) {
-		return errors.New("token not before now")
+		return ErrNotBeforeNow
 	}
 	// декодируем данные в пользовательский объект, если он определен
 	if claimset != nil {

@@ -40,7 +40,8 @@ type Config struct {
 
 // Token возвращает сгенерированный токен на основании шаблона и
 // предоставленных данных. В качестве payload можно указать
-// map[string]interface{} или собственный объект.
+// map[string]interface{} или собственный объект. Так же принимается строка:
+// в этом случае считается, что она задает единственное значение "sub".
 //
 // Есть несколько отличий от стандартной сериализации в формат JSON, которые
 // заложены в этой функции. Во-первых, все поля, представленные в виде
@@ -87,6 +88,10 @@ func (c *Config) Token(claimset interface{}) (string, error) {
 	}
 	// добавляем данные из объекта
 	switch claimset := claimset.(type) {
+	case string:
+		result["sub"] = claimset
+	case fmt.Stringer:
+		result["sub"] = claimset.String()
 	case map[string]string: // только строковые значения
 		for key, value := range claimset {
 			result[key] = value

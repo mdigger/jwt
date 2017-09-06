@@ -1,10 +1,8 @@
 package jwt
 
 import (
-	"crypto"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strings"
 )
@@ -25,15 +23,11 @@ import (
 //
 // Так же поддерживаются следующие форматы функции для передачи ключа:
 // 	func(keyID string, alg string) interface{}
-// 	func(keyID string, alg string) crypto.PublicKey
-// 	func(keyID string, alg string) []byte
 // 	func(keyID string) interface{}
-// 	func(keyID string) crypto.PublicKey
-// 	func(keyID string) []byte
 func Verify(token string, key interface{}) error {
 	parts := strings.Split(token, ".")
 	if len(parts) != 3 {
-		return errors.New("invalid token")
+		return ErrInvalid
 	}
 	// разбираем заголовок токена
 	data, err := base64.RawURLEncoding.DecodeString(parts[0])
@@ -50,10 +44,10 @@ func Verify(token string, key interface{}) error {
 	}
 	// проверяем тип токена
 	if header.Type != "" && header.Type != "JWT" {
-		return errors.New("bad token type")
+		return ErrBadType
 	}
 	if len(parts[2]) == 0 {
-		return errors.New("token not signed")
+		return ErrNotSigned
 	}
 	// если для получения ключа задана функция, то вызываем ее
 	switch fkey := key.(type) {
@@ -61,19 +55,11 @@ func Verify(token string, key interface{}) error {
 		return nil // проверка не требуется
 	case func(string, string) interface{}:
 		key = fkey(header.Algorithm, header.KeyID)
-	case func(string, string) crypto.PublicKey:
-		key = fkey(header.Algorithm, header.KeyID)
-	case func(string, string) []byte:
-		key = fkey(header.Algorithm, header.KeyID)
 	case func(string) interface{}:
-		key = fkey(header.Algorithm)
-	case func(string) crypto.PublicKey:
-		key = fkey(header.Algorithm)
-	case func(string) []byte:
 		key = fkey(header.Algorithm)
 	}
 	if key == nil {
-		return errors.New("empty token sign key")
+		return ErrEmptySignKey
 	}
 	// декодируем подпись
 	signature, err := base64.RawURLEncoding.DecodeString(parts[2])

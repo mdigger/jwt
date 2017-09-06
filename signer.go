@@ -28,12 +28,24 @@ func algorithm(key interface{}) (string, crypto.Hash) {
 	}
 	switch key := key.(type) {
 	case *rsa.PrivateKey, *rsa.PublicKey, rsa.PrivateKey, rsa.PublicKey:
+		if key == nil {
+			break
+		}
 		return "RS256", crypto.SHA256
 	case *ecdsa.PrivateKey:
+		if key == nil {
+			break
+		}
 		return ecdsaParams(key.Params().Name)
 	case *ecdsa.PublicKey:
+		if key == nil {
+			break
+		}
 		return ecdsaParams(key.Params().Name)
 	case []byte, string, fmt.Stringer:
+		if key == nil {
+			break
+		}
 		return "HS256", crypto.SHA256
 	}
 	return "none", 0
