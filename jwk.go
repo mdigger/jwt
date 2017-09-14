@@ -7,6 +7,7 @@ import (
 	"crypto/rsa"
 	"encoding/base64"
 	"fmt"
+	"io"
 	"math/big"
 )
 
@@ -18,6 +19,18 @@ var (
 	// ECDSA ключа. Используется в функции NewES256Key.
 	ECDSACurve = elliptic.P256()
 )
+
+// NewHS256Key возвращает новый ключ для подписи в формате HS256 указанной
+// длины.
+//
+// Вызывает panic в случае ошибки создания.
+func NewHS256Key(length int) []byte {
+	var data = make([]byte, length)
+	if _, err := io.ReadFull(rand.Reader, data); err != nil {
+		panic(err)
+	}
+	return data
+}
 
 // NewRS256Key возвращает новый ключ для подписи в формате RS256.
 // Длина ключа задается переменной RSAKeyBits.
