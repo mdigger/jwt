@@ -25,7 +25,8 @@ type JSON = map[string]interface{}
 // поддерживает строковое представление (fmt.Stringer) - HS256.
 //
 // Чтобы указать в заголовке токена идентификатор ключа, используемого для
-// подписи, нужно задать значение KeyID.
+// подписи, нужно чтобы функция ключа возвращала два значения: первым будет
+// KeyID, а вторым - сам ключ для подписи.
 type Config struct {
 	Issuer    string        // iss - идентификатор выпускающего
 	Created   bool          // iat - добавлять время создания
@@ -54,7 +55,7 @@ type Config struct {
 // что больше соответствует формату JSON токена.
 func (c *Config) Token(claimset interface{}) (string, error) {
 	// формируем содержимое токена
-	result := make(JSON)
+	var result = make(JSON)
 	// добавляем дополнительные поля из шаблона
 	for key, value := range c.Private {
 		if vt, ok := value.(time.Time); ok {
@@ -107,7 +108,7 @@ func (c *Config) Token(claimset interface{}) (string, error) {
 			result[key] = value
 		}
 	default: // поддержка структур
-		v := reflect.ValueOf(claimset)
+		var v = reflect.ValueOf(claimset)
 		if v.Kind() == reflect.Ptr {
 			v = v.Elem()
 		}
@@ -115,15 +116,15 @@ func (c *Config) Token(claimset interface{}) (string, error) {
 		if k := v.Kind(); k == reflect.Invalid || k != reflect.Struct {
 			return "", fmt.Errorf("unsupported claimset type %T", claimset)
 		}
-		typ := v.Type()
+		var typ = v.Type()
 		// перебираем все поля структуры
 		for i := 0; i < v.NumField(); i++ {
-			field := typ.Field(i)
+			var field = typ.Field(i)
 			if field.PkgPath != "" {
 				continue // игнорируем приватные поля
 			}
 			// подбираем имя элемента токена
-			tag := field.Tag.Get("jwt")
+			var tag = field.Tag.Get("jwt")
 			if tag == "" {
 				tag = field.Tag.Get("json")
 			}
@@ -133,11 +134,11 @@ func (c *Config) Token(claimset interface{}) (string, error) {
 			if tag == "-" {
 				continue // явно указано игнорирование
 			}
-			value := v.Field(i)
+			var value = v.Field(i)
 			// пропускаем пустые значения, которые указано игнорировать
 			if indx := strings.IndexRune(tag, ','); indx >= 0 {
 				if strings.Contains(tag[indx+1:], "omitempty") {
-					zero := reflect.Zero(value.Type()).Interface()
+					var zero = reflect.Zero(value.Type()).Interface()
 					if reflect.DeepEqual(value.Interface(), zero) {
 						continue
 					}
@@ -147,11 +148,11 @@ func (c *Config) Token(claimset interface{}) (string, error) {
 			// если имя не определено в теге элемента, то берем имя поля
 			if tag == "" {
 				// первую букву в имени приводим к нижнему регистру
-				runes := []rune(field.Name)
+				var runes = []rune(field.Name)
 				runes[0] = unicode.ToLower(runes[0])
 				tag = string(runes)
 			}
-			val := value.Interface()
+			var val = value.Interface()
 			// подмена данных для времени
 			if vt, ok := val.(time.Time); ok {
 				if vt.IsZero() {

@@ -1,4 +1,4 @@
-package jwt
+package jwt_test
 
 import (
 	"crypto/rsa"
@@ -27,7 +27,7 @@ func TestJWK(t *testing.T) {
 		&(jwt.NewRS256Key().PublicKey),
 	} {
 		fmt.Printf("%T:\n", key)
-		data, err := JWKEncode(key, "test")
+		data, err := jwt.JWKEncode(key, "test")
 		if err != nil {
 			t.Fatal(err)
 		}

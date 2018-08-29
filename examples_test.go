@@ -26,6 +26,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+	fmt.Println("token:", token)
 }
 
 func ExampleEncode() {
@@ -69,7 +70,7 @@ func ExampleDecode() {
 
 func ExampleVerify() {
 	// проверка подписи токена с простым ключем
-	if err := jwt.Verify(token, "my secret sign key"); err != nil {
+	if _, err := jwt.Verify(token, "my secret sign key"); err != nil {
 		log.Fatal(err)
 	}
 
@@ -82,7 +83,7 @@ func ExampleVerify() {
 		return []byte("my secret sign key")
 	}
 	// вызываем проверку подписи с вызовом функции получения ключа
-	if err := jwt.Verify(token, getMyKey); err != nil {
+	if _, err := jwt.Verify(token, getMyKey); err != nil {
 		log.Fatal(err)
 	}
 }

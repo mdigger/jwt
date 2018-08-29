@@ -3,7 +3,6 @@ package jwt
 import (
 	"crypto/ecdsa"
 	"fmt"
-	"log"
 	"testing"
 )
 
@@ -15,7 +14,7 @@ func TestConfig(t *testing.T) {
 	}
 	token, err := conf.Token(JSON{"sub": "9394203942934"})
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 	fmt.Println("token:", token)
 }
@@ -31,7 +30,7 @@ func TestConfigFuncKey(t *testing.T) {
 	}
 	token, err := conf.Token(JSON{"sub": "9394203942934"})
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 	fmt.Println("token:", token)
 }

@@ -1,9 +1,9 @@
 package jwt
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"strings"
 )
 
@@ -23,7 +23,7 @@ import (
 // 	func() interface{}
 // 	func() string, interface{}
 //
-// В последних случаях кроме ключа так же возвращается его идентификатор.
+// В последних случаях, кроме ключа так же возвращается его идентификатор.
 func Encode(claimset, key interface{}) (string, error) {
 	// кодируем данные токена в формат JSON
 	data, err := json.Marshal(claimset)
@@ -43,7 +43,7 @@ func Encode(claimset, key interface{}) (string, error) {
 		return "", ErrBadHashFunc
 	}
 	// взводим флаг, что требуется подпись токена
-	signFlag := (key != nil && !strings.EqualFold(alg, "none"))
+	var signFlag = (key != nil && !strings.EqualFold(alg, "none"))
 	if !signFlag {
 		keyID = "" // если подпись не требуется, то и ключ всегда будет пустой
 	}
@@ -62,20 +62,27 @@ func Encode(claimset, key interface{}) (string, error) {
 		return "", err
 	}
 	// формируем токен
-	token := fmt.Sprintf("%s.%s",
-		base64.RawURLEncoding.EncodeToString(header),
-		base64.RawURLEncoding.EncodeToString(data))
+	var token bytes.Buffer
+	var enc = base64.NewEncoder(base64.RawURLEncoding, &token)
+	_, _ = enc.Write(header)
+	_ = enc.Close()
+	_ = token.WriteByte('.')
+	enc = base64.NewEncoder(base64.RawURLEncoding, &token)
+	_, _ = enc.Write(data)
+	_ = enc.Close()
 	// если указан ключ, то подписываем токен
 	if signFlag {
-		siganture, err := sign([]byte(token), key)
+		siganture, err := sign(token.Bytes(), key)
 		if err != nil {
 			return "", err
 		}
 		// добавляем сигнатуру
-		token = fmt.Sprintf("%s.%s", token,
-			base64.RawURLEncoding.EncodeToString(siganture))
+		_ = token.WriteByte('.')
+		enc = base64.NewEncoder(base64.RawURLEncoding, &token)
+		_, _ = enc.Write(siganture)
+		_ = enc.Close()
 	} else {
-		token = token + "." // добавляем пустую сигнатуру
+		_ = token.WriteByte('.') // в любом случае добпвляем разделитель в конце
 	}
-	return token, nil
+	return token.String(), nil
 }

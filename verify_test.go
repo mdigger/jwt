@@ -25,7 +25,7 @@ func TestVerify(t *testing.T) {
 	getKey := func(string) interface{} {
 		return "my secret sign key"
 	}
-	if err := Verify(token, getKey); err != nil {
+	if _, err := Verify(token, getKey); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -40,7 +40,7 @@ func TestVerifyNotSignedToken(t *testing.T) {
 		t.Fatal(err)
 	}
 	// fmt.Println(token)
-	if err := Verify(token, ""); err.Error() != "token not signed" {
+	if _, err := Verify(token, ""); err.Error() != "token not signed" {
 		t.Fatal("bad verify unsigned token")
 	}
 
