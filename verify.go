@@ -60,6 +60,8 @@ func Verify(token string, key interface{}) error {
 	}
 	if key == nil {
 		return ErrEmptySignKey
+	} else if err, ok := key.(error); ok {
+		return err
 	}
 	// декодируем подпись
 	signature, err := base64.RawURLEncoding.DecodeString(parts[2])
