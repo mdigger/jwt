@@ -41,7 +41,7 @@ func ExampleEncode() {
 		"birthday": jwt.Time{Time: time.Date(1971, time.December, 24, 0, 0, 0, 0, time.Local)},
 		"nonce":    jwt.Nonce(8)(),
 	}
-	// создаем токен с подписью HS256 с секретным ключем
+	// создаем токен с подписью HS256 с секретным ключом
 	token, err := jwt.Encode(claimset, "my secret sign key")
 	if err != nil {
 		log.Fatal(err)
@@ -69,7 +69,7 @@ func ExampleDecode() {
 }
 
 func ExampleVerify() {
-	// проверка подписи токена с простым ключем
+	// проверка подписи токена с простым ключом
 	if _, err := jwt.Verify(token, "my secret sign key"); err != nil {
 		log.Fatal(err)
 	}

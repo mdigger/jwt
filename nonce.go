@@ -12,12 +12,16 @@ import (
 func Nonce(length uint8) func() string {
 	// вычисляем размер необходимого бинарного буфера для генерации случайной
 	// строки указанного размера
-	var dataLength = base64.RawURLEncoding.DecodedLen(int(length))
+	dataLength := base64.RawURLEncoding.DecodedLen(int(length))
+
 	// возвращаем анонимную функцию, которая будет создавать строки в кодировке
 	// base64 со случайными данными
 	return func() string {
-		var data = make([]byte, dataLength)
-		io.ReadFull(rand.Reader, data)
+		data := make([]byte, dataLength)
+		if _, err := io.ReadFull(rand.Reader, data); err != nil {
+			panic(err) // проблема к криптографией
+		}
+
 		return base64.RawURLEncoding.EncodeToString(data)
 	}
 }

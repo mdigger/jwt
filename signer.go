@@ -26,32 +26,37 @@ func algorithm(key interface{}) (string, crypto.Hash) {
 			return "", 0
 		}
 	}
+
 	switch key := key.(type) {
 	case *rsa.PrivateKey, *rsa.PublicKey, rsa.PrivateKey, rsa.PublicKey:
 		if key == nil {
 			break
 		}
 		return "RS256", crypto.SHA256
+
 	case *ecdsa.PrivateKey:
 		if key == nil {
 			break
 		}
 		return ecdsaParams(key.Params().Name)
+
 	case *ecdsa.PublicKey:
 		if key == nil {
 			break
 		}
 		return ecdsaParams(key.Params().Name)
+
 	case []byte, string, fmt.Stringer:
 		if key == nil {
 			break
 		}
 		return "HS256", crypto.SHA256
 	}
+
 	return "none", 0
 }
 
-// sign подписывает данные указанным ключем и возвращает сигнатуру подписи.
+// sign подписывает данные указанным ключом и возвращает сигнатуру подписи.
 // В качестве ключа можно указать *rsa.PrivateKey, *ecdsa.PrivateKey, []byte,
 // string или любой объект, поддерживающий fmt.Stringer. В последних трех
 // случаях для подписи будет использоваться алгоритм HS256.
@@ -60,17 +65,18 @@ func sign(data []byte, key crypto.PrivateKey) ([]byte, error) {
 	if !hash.Available() {
 		return nil, fmt.Errorf("unsupported hash for key type %T [%d]", key, hash)
 	}
+
 	// в зависимости от типа ключа используем разные алгоритмы
 repeat:
 	switch signerKey := key.(type) {
 	case *rsa.PrivateKey:
 		h := hash.New()
-		h.Write(data)
+		_, _ = h.Write(data)
 		return signerKey.Sign(rand.Reader, h.Sum(nil), hash)
 
 	case *ecdsa.PrivateKey:
 		h := hash.New()
-		h.Write(data)
+		_, _ = h.Write(data)
 		r, s, err := ecdsa.Sign(rand.Reader, signerKey, h.Sum(nil))
 		if err != nil {
 			return nil, err
@@ -87,11 +93,13 @@ repeat:
 
 	case []byte:
 		mac := hmac.New(hash.New, signerKey)
-		mac.Write(data)
+		_, _ = mac.Write(data)
 		return mac.Sum(nil), nil
+
 	case string:
 		key = []byte(signerKey)
 		goto repeat
+
 	case fmt.Stringer:
 		key = []byte(signerKey.String())
 		goto repeat
@@ -101,7 +109,7 @@ repeat:
 	}
 }
 
-// verify проверяет, что данные действительно подписаны данным ключем.
+// verify проверяет, что данные действительно подписаны данным ключом.
 // В качестве ключа можно указать *rsa.PrivateKey, *rsa.PublicKey,
 // *ecdsa.PrivateKey, *ecdsa.PublicKey, []byte, string или любой объект,
 // поддерживающий fmt.Stringer. В последних трех случаях для проверки подписи
@@ -111,20 +119,22 @@ func verify(data, signature []byte, key interface{}) error {
 	if !hash.Available() {
 		return fmt.Errorf("unsupported hash for key type %T [%d]", key, hash)
 	}
+
 	// в зависимости от типа ключа используем разные алгоритмы
 repeat:
 	switch signerKey := key.(type) {
-	case *rsa.PublicKey: // проверяем подпись с публичным ключем RSA
+	case *rsa.PublicKey: // проверяем подпись с публичным ключом RSA
 		h := hash.New()
-		h.Write(data)
+		_, _ = h.Write(data)
 		return rsa.VerifyPKCS1v15(signerKey, crypto.SHA256, h.Sum(nil), signature)
+
 	case *rsa.PrivateKey: // подменяем ключ на публичный
 		key = &signerKey.PublicKey
 		goto repeat
 
 	case *ecdsa.PublicKey: // выполняем проверку подписи ECDSA
 		h := hash.New()
-		h.Write(data)
+		_, _ = h.Write(data)
 		// восстанавливаем значения r и s из сигнатуры
 		div := len(signature) / 2
 		r := new(big.Int).SetBytes(signature[:div])
@@ -133,21 +143,24 @@ repeat:
 			return errors.New("bad ecdsa signature")
 		}
 		return nil
+
 	case *ecdsa.PrivateKey: // подменяем ключ на публичный
 		key = &signerKey.PublicKey
 		goto repeat
 
-	case []byte: // хешируем исходные данные и сравниваем с сохраненным хешом
+	case []byte: // хэшируем исходные данные и сравниваем с сохраненным хешем
 		mac := hmac.New(hash.New, signerKey)
-		mac.Write(data)
+		_, _ = mac.Write(data)
 		signature2 := mac.Sum(nil)
 		if !hmac.Equal(signature, signature2) {
 			return errors.New("bad hmac signature")
 		}
 		return nil
+
 	case string: // преобразуем формат ключа к бинарному и повторяем
 		key = []byte(signerKey)
 		goto repeat
+
 	case fmt.Stringer: // преобразуем формат ключа к бинарному и повторяем
 		key = []byte(signerKey.String())
 		goto repeat

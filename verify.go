@@ -3,7 +3,6 @@ package jwt
 import (
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"strings"
 	"time"
 )
@@ -41,7 +40,8 @@ func Verify(token string, key interface{}) (claim []byte, err error) {
 	if err != nil {
 		return nil, err
 	}
-	var times = new(struct {
+
+	times := new(struct {
 		Created   Time `json:"iat"`
 		Expires   Time `json:"exp"`
 		NotBefore Time `json:"nbf"`
@@ -49,6 +49,7 @@ func Verify(token string, key interface{}) (claim []byte, err error) {
 	if err := json.Unmarshal(claim, times); err != nil {
 		return nil, err
 	}
+
 	// проверяем поля со временем
 	now := time.Now() // текущее время
 	if !times.Created.IsZero() && times.Created.After(now) {
@@ -66,7 +67,8 @@ func Verify(token string, key interface{}) (claim []byte, err error) {
 	if err != nil {
 		return nil, err
 	}
-	var header = new(struct {
+
+	header := new(struct {
 		Algorithm string `json:"alg"`           // алгоритм подписи
 		Type      string `json:"typ"`           // тип токена
 		KeyID     string `json:"kid,omitempty"` // необязательный идентификатор ключа
@@ -74,6 +76,7 @@ func Verify(token string, key interface{}) (claim []byte, err error) {
 	if err := json.Unmarshal(data, header); err != nil {
 		return nil, err
 	}
+
 	// проверяем тип токена
 	if header.Type != "" && header.Type != "JWT" {
 		return nil, ErrBadType
@@ -81,6 +84,7 @@ func Verify(token string, key interface{}) (claim []byte, err error) {
 	if len(parts[2]) == 0 {
 		return nil, ErrNotSigned
 	}
+
 	// если для получения ключа задана функция, то вызываем ее
 	switch fkey := key.(type) {
 	case nil:
@@ -90,20 +94,22 @@ func Verify(token string, key interface{}) (claim []byte, err error) {
 	case func(string) interface{}:
 		key = fkey(header.Algorithm)
 	}
+
 	if key == nil {
 		return nil, ErrEmptySignKey
 	} else if err, ok := key.(error); ok {
 		return nil, err
 	}
+
 	// декодируем подпись
 	signature, err := base64.RawURLEncoding.DecodeString(parts[2])
 	if err != nil {
 		return nil, err
 	}
+
 	// проверяем подпись токена
-	err = verify([]byte(fmt.Sprintf("%s.%s", parts[0], parts[1])),
-		signature, key)
-	if err != nil {
+	withoutSignature := token[:len(parts[0])+len(parts[1])+1]
+	if err = verify([]byte(withoutSignature), signature, key); err != nil {
 		return nil, err
 	}
 	return claim, nil

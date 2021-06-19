@@ -11,5 +11,5 @@ var (
 	ErrCreatedAfterNow = errors.New("token created after now")
 	ErrNotBeforeNow    = errors.New("token not before now")
 	ErrExpired         = errors.New("token expired")
-	ErrBadHashFunc     = errors.New("hash function for key is not availible")
+	ErrBadHashFunc     = errors.New("hash function for key is not available")
 )

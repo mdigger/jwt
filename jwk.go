@@ -11,21 +11,16 @@ import (
 	"math/big"
 )
 
-var (
-	// RSAKeyBits содержит длину ключа для генерации RSA. Используется в
-	// функции NewRS256Key.
-	RSAKeyBits = 2048
-	// ECDSACurve содержит инициализированный elliptic.Curve для генерации
-	// ECDSA ключа. Используется в функции NewES256Key.
-	ECDSACurve = elliptic.P256()
-)
+// RSAKeyBits содержит длину ключа для генерации RSA. Используется в
+// функции NewRS256Key.
+var RSAKeyBits = 2048
 
 // NewHS256Key возвращает новый ключ для подписи в формате HS256 указанной
 // длины.
 //
 // Вызывает panic в случае ошибки создания.
 func NewHS256Key(length int) []byte {
-	var data = make([]byte, length)
+	data := make([]byte, length)
 	if _, err := io.ReadFull(rand.Reader, data); err != nil {
 		panic(err)
 	}
@@ -49,7 +44,7 @@ func NewRS256Key() *rsa.PrivateKey {
 //
 // Вызывает panic в случае ошибки создания.
 func NewES256Key() *ecdsa.PrivateKey {
-	key, err := ecdsa.GenerateKey(ECDSACurve, rand.Reader)
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		panic(err)
 	}
@@ -129,6 +124,7 @@ func JWKEncode(key interface{}, keyID string) (jwk *JWK, err error) {
 		ID:    keyID,
 		Usage: "sig",
 	}
+
 	switch key := key.(type) {
 	case *rsa.PublicKey:
 		jwk.Type = "RSA"
@@ -191,82 +187,101 @@ func JWKEncode(key interface{}, keyID string) (jwk *JWK, err error) {
 		jwk.Type = "oct"
 		jwk.Algorithm = "HS256"
 		jwk.K = base64.RawURLEncoding.EncodeToString(key)
+
 	case string:
 		jwk.Type = "oct"
 		jwk.Algorithm = "HS256"
 		jwk.K = base64.RawURLEncoding.EncodeToString([]byte(key))
+
 	case fmt.Stringer:
 		jwk.Type = "oct"
 		jwk.Algorithm = "HS256"
 		jwk.K = base64.RawURLEncoding.EncodeToString([]byte(key.String()))
+
 	default:
 		return nil, fmt.Errorf("unsupported key type %T", key)
 	}
+
 	return
 }
 
 // Decode декодирует описание в ключ.
 func (key *JWK) Decode() (interface{}, error) {
-	if key.Type == "RSA" ||
-		(key.N != "" && key.E != "" &&
-			(key.Algorithm == "" || key.Algorithm == "RS256")) {
+	switch {
+	case key.Type == "RSA" ||
+		(key.N != "" && key.E != "" && (key.Algorithm == "" || key.Algorithm == "RS256")):
+
 		e, err := base64.RawURLEncoding.DecodeString(key.E)
 		if err != nil {
 			return nil, err
 		}
+
 		n, err := base64.RawURLEncoding.DecodeString(key.N)
 		if err != nil {
 			return nil, err
 		}
+
 		rsaKey := &rsa.PublicKey{
 			N: new(big.Int).SetBytes(n),
 			E: int(new(big.Int).SetBytes(e).Int64()),
 		}
+
 		// проверяем, что это не публичный ключ
 		if key.D != "" {
 			d, err := base64.RawURLEncoding.DecodeString(key.D)
 			if err != nil {
 				return nil, err
 			}
+
 			rsaPrivateKey := &rsa.PrivateKey{
 				PublicKey: *rsaKey,
 				D:         new(big.Int).SetBytes(d),
 			}
+
 			if key.P != "" && key.Q != "" {
 				p, err := base64.RawURLEncoding.DecodeString(key.P)
 				if err != nil {
 					return nil, err
 				}
+
 				q, err := base64.RawURLEncoding.DecodeString(key.Q)
 				if err != nil {
 					return nil, err
 				}
+
 				rsaPrivateKey.Primes = []*big.Int{
 					new(big.Int).SetBytes(p),
 					new(big.Int).SetBytes(q),
 				}
 			}
+
 			if key.DP != "" {
 				dp, err := base64.RawURLEncoding.DecodeString(key.DP)
 				if err != nil {
 					return nil, err
 				}
+
 				rsaPrivateKey.Precomputed.Dp = new(big.Int).SetBytes(dp)
 			}
+
 			if key.DQ != "" {
 				dq, err := base64.RawURLEncoding.DecodeString(key.DQ)
 				if err != nil {
 					return nil, err
 				}
+
 				rsaPrivateKey.Precomputed.Dq = new(big.Int).SetBytes(dq)
 			}
+
 			if key.QI != "" {
 				qi, err := base64.RawURLEncoding.DecodeString(key.QI)
 				if err != nil {
 					return nil, err
 				}
+
 				rsaPrivateKey.Precomputed.Qinv = new(big.Int).SetBytes(qi)
 			}
+
 			if len(key.OTH) > 0 {
 				rsaPrivateKey.Precomputed.CRTValues = make([]rsa.CRTValue, len(key.OTH))
 				for i, crt := range key.OTH {
@@ -274,14 +289,17 @@ func (key *JWK) Decode() (interface{}, error) {
 					if err != nil {
 						return nil, err
 					}
+
 					d, err := base64.RawURLEncoding.DecodeString(crt.D)
 					if err != nil {
 						return nil, err
 					}
+
 					t, err := base64.RawURLEncoding.DecodeString(crt.T)
 					if err != nil {
 						return nil, err
 					}
+
 					rsaPrivateKey.Precomputed.CRTValues[i] = rsa.CRTValue{
 						R:     new(big.Int).SetBytes(r),
 						Exp:   new(big.Int).SetBytes(d),
@@ -289,19 +307,25 @@ func (key *JWK) Decode() (interface{}, error) {
 					}
 				}
 			}
+
 			return rsaPrivateKey, nil
 		}
+
 		return rsaKey, nil
-	} else if key.Type == "EC" ||
-		(key.Curve != "" && key.X != "" && key.Y != "") {
+
+	case key.Type == "EC" ||
+		(key.Curve != "" && key.X != "" && key.Y != ""):
+
 		x, err := base64.RawURLEncoding.DecodeString(key.E)
 		if err != nil {
 			return nil, err
 		}
+
 		y, err := base64.RawURLEncoding.DecodeString(key.N)
 		if err != nil {
 			return nil, err
 		}
+
 		var crv elliptic.Curve
 		switch key.Curve {
 		case "P-256":
@@ -311,24 +335,29 @@ func (key *JWK) Decode() (interface{}, error) {
 		case "P-521":
 			crv = elliptic.P521()
 		}
+
 		ecdsaKey := &ecdsa.PublicKey{
 			Curve: crv,
 			X:     (&big.Int{}).SetBytes(x),
 			Y:     (&big.Int{}).SetBytes(y),
 		}
+
 		// проверяем, что это не публичный ключ
 		if key.D != "" {
 			d, err := base64.RawURLEncoding.DecodeString(key.D)
 			if err != nil {
 				return nil, err
 			}
+
 			return &ecdsa.PrivateKey{
 				PublicKey: *ecdsaKey,
 				D:         (&big.Int{}).SetBytes(d),
 			}, nil
 		}
+
 		return ecdsaKey, nil
-	} else {
+
+	default:
 		// unsupported key type
 		return nil, fmt.Errorf("unsupported key type: %T", key)
 	}

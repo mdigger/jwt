@@ -55,7 +55,8 @@ type Config struct {
 // что больше соответствует формату JSON токена.
 func (c *Config) Token(claimset interface{}) (string, error) {
 	// формируем содержимое токена
-	var result = make(JSON)
+	result := make(JSON)
+
 	// добавляем дополнительные поля из шаблона
 	for key, value := range c.Private {
 		if vt, ok := value.(time.Time); ok {
@@ -66,10 +67,12 @@ func (c *Config) Token(claimset interface{}) (string, error) {
 		}
 		result[key] = value
 	}
+
 	// генерируем поля на основе данных шаблона
 	if c.Issuer != "" {
 		result["iss"] = c.Issuer
 	}
+
 	// добавляем данные с временем
 	now := time.Now()
 	if c.Created {
@@ -87,18 +90,23 @@ func (c *Config) Token(claimset interface{}) (string, error) {
 	if c.UniqueID != nil {
 		result["jti"] = c.UniqueID()
 	}
+
 	// добавляем данные из объекта
 	switch claimset := claimset.(type) {
 	case string:
 		result["sub"] = claimset
+
 	case fmt.Stringer:
 		result["sub"] = claimset.String()
+
 	case map[string]string: // только строковые значения
 		for key, value := range claimset {
 			result[key] = value
 		}
+
 	case JSON: // словарь в формате JSON
 		for key, value := range claimset {
+			// отдельно обрабатываем поля с датой и временем
 			if vt, ok := value.(time.Time); ok {
 				if vt.IsZero() {
 					continue // игнорируем пустые даты
@@ -107,52 +115,56 @@ func (c *Config) Token(claimset interface{}) (string, error) {
 			}
 			result[key] = value
 		}
+
 	default: // поддержка структур
-		var v = reflect.ValueOf(claimset)
+		v := reflect.ValueOf(claimset)
 		if v.Kind() == reflect.Ptr {
 			v = v.Elem()
 		}
+
 		// проверяем, что данный тип данных мы поддерживаем
 		if k := v.Kind(); k == reflect.Invalid || k != reflect.Struct {
 			return "", fmt.Errorf("unsupported claimset type %T", claimset)
 		}
-		var typ = v.Type()
+
+		typ := v.Type()
 		// перебираем все поля структуры
 		for i := 0; i < v.NumField(); i++ {
-			var field = typ.Field(i)
+			field := typ.Field(i)
 			if field.PkgPath != "" {
 				continue // игнорируем приватные поля
 			}
+
 			// подбираем имя элемента токена
-			var tag = field.Tag.Get("jwt")
-			if tag == "" {
-				tag = field.Tag.Get("json")
-			}
-			if tag == "" && strings.Index(string(field.Tag), ":") < 0 {
-				tag = string(field.Tag)
+			tag, ok := field.Tag.Lookup("jwt")
+			if !ok {
+				tag, ok = field.Tag.Lookup("json")
+				if !ok && !strings.Contains(string(field.Tag), ":") {
+					tag = string(field.Tag)
+				}
 			}
 			if tag == "-" {
 				continue // явно указано игнорирование
 			}
-			var value = v.Field(i)
+
+			value := v.Field(i)
 			// пропускаем пустые значения, которые указано игнорировать
-			if indx := strings.IndexRune(tag, ','); indx >= 0 {
-				if strings.Contains(tag[indx+1:], "omitempty") {
-					var zero = reflect.Zero(value.Type()).Interface()
-					if reflect.DeepEqual(value.Interface(), zero) {
-						continue
-					}
+			if idx := strings.IndexByte(tag, ','); idx >= 0 {
+				if strings.Contains(tag[idx+1:], "omitempty") && value.IsZero() {
+					continue
 				}
-				tag = tag[:indx]
+				tag = tag[:idx]
 			}
+
 			// если имя не определено в теге элемента, то берем имя поля
 			if tag == "" {
 				// первую букву в имени приводим к нижнему регистру
-				var runes = []rune(field.Name)
+				runes := []rune(field.Name)
 				runes[0] = unicode.ToLower(runes[0])
 				tag = string(runes)
 			}
-			var val = value.Interface()
+
+			val := value.Interface()
 			// подмена данных для времени
 			if vt, ok := val.(time.Time); ok {
 				if vt.IsZero() {
@@ -164,6 +176,7 @@ func (c *Config) Token(claimset interface{}) (string, error) {
 			result[tag] = val
 		}
 	}
+
 	// кодируем и возвращаем токен
 	return Encode(result, c.Key)
 }

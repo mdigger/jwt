@@ -11,9 +11,11 @@ func Decode(token string, claimset interface{}) error {
 	if err != nil {
 		return err
 	}
+
 	if claimset == nil {
 		return nil
 	}
+
 	// декодируем данные в пользовательский объект, если он определен
 	return json.Unmarshal(claim, claimset)
 }
