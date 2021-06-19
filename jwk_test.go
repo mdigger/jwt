@@ -11,15 +11,11 @@ import (
 	"github.com/mdigger/jwt"
 )
 
-var JSONOut func(v interface{}) error
-
-func init() {
+func TestJWK(t *testing.T) {
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")
-	JSONOut = enc.Encode
-}
+	JSONOut := enc.Encode
 
-func TestJWK(t *testing.T) {
 	for _, key := range []interface{}{
 		jwt.NewES256Key(),
 		&(jwt.NewES256Key().PublicKey),

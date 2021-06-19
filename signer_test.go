@@ -9,19 +9,22 @@ func TestSign(t *testing.T) {
 	if name, _ := algorithm(rsaKey); name != "RS256" {
 		t.Error("bad RSA algorithm name")
 	}
+
 	ecdsaKey := NewES256Key()
 	if name, _ := algorithm(ecdsaKey); name != "ES256" {
 		t.Error("bad ECDSA algorithm name")
 	}
+
 	hmacKey := "HS256 secret key"
 	if name, _ := algorithm(hmacKey); name != "HS256" {
 		t.Error("bad HMAC algorithm name")
 	}
+
 	if name, _ := algorithm(nil); name != "none" {
 		t.Error("bad NONE algorithm name")
 	}
 
-	var data = []byte("test body")
+	data := []byte("test body")
 
 	if signature, err := sign(data, hmacKey); err != nil {
 		t.Fatal(err)
@@ -40,5 +43,4 @@ func TestSign(t *testing.T) {
 	} else if err := verify(data, signature, ecdsaKey); err != nil {
 		t.Fatal(err)
 	}
-
 }

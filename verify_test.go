@@ -16,6 +16,7 @@ func TestVerify(t *testing.T) {
 		"birthday": Time{Time: time.Date(1971, time.December, 24, 0, 0, 0, 0, time.Local)},
 		"nonce":    Nonce(8)(),
 	}
+
 	token, err := Encode(payload, "my secret sign key")
 	if err != nil {
 		t.Fatal(err)
@@ -25,23 +26,26 @@ func TestVerify(t *testing.T) {
 	getKey := func(string) interface{} {
 		return "my secret sign key"
 	}
+
 	if _, err := Verify(token, getKey); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestVerifyNotSignedToken(t *testing.T) {
-	var conf = &Config{
+	conf := Config{
 		Issuer:   "http://service.example.com/",
 		UniqueID: Nonce(8),
 	}
+
 	token, err := conf.Token(JSON{"sub": "9394203942934"})
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	// fmt.Println(token)
+
 	if _, err := Verify(token, ""); err.Error() != "token not signed" {
 		t.Fatal("bad verify unsigned token")
 	}
-
 }

@@ -21,12 +21,14 @@ func init() {
 		"birthday": jwt.Time{Time: time.Date(1971, time.December, 24, 8, 43, 0, 0, time.UTC)},
 		"nonce":    jwt.Nonce(8)(),
 	}
+
 	var err error
 	token, err = jwt.Encode(claimset, "my secret sign key")
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("token:", token)
+
+	// fmt.Println("test token:", token)
 }
 
 func ExampleEncode() {
@@ -41,17 +43,19 @@ func ExampleEncode() {
 		"birthday": jwt.Time{Time: time.Date(1971, time.December, 24, 0, 0, 0, 0, time.Local)},
 		"nonce":    jwt.Nonce(8)(),
 	}
+
 	// создаем токен с подписью HS256 с секретным ключом
 	token, err := jwt.Encode(claimset, "my secret sign key")
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	fmt.Println("token:", token)
 }
 
 func ExampleDecode() {
 	// описываем структуру с данными, которые хотим распаковать из токена
-	var claimset = new(struct {
+	var claimset struct {
 		Issuer   string   `json:"iss"`
 		Subject  string   `json:"sub"`
 		Created  jwt.Time `json:"iat"`
@@ -60,12 +64,14 @@ func ExampleDecode() {
 		Email    string
 		Birthday jwt.Time // время представлено числовом виде
 		Nonce    string
-	})
+	}
+
 	// извлекаем данные из токена
-	if err := jwt.Decode(token, claimset); err != nil {
+	if err := jwt.Decode(token, &claimset); err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(claimset)
+
+	fmt.Printf("%+v\n", claimset)
 }
 
 func ExampleVerify() {
@@ -89,15 +95,17 @@ func ExampleVerify() {
 }
 
 func ExampleNonce() {
-	var conf = &jwt.Config{
+	conf := jwt.Config{
 		Issuer:   "http://service.example.com/",
 		UniqueID: jwt.Nonce(8), // задаем функцию генерации случайного nonce
 	}
+
 	token, err := conf.Token(jwt.JSON{"sub": "9394203942934"})
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("token:", token)
+
+	fmt.Println(token)
 }
 
 func ExampleJSON() {
@@ -112,17 +120,19 @@ func ExampleJSON() {
 		"birthday": jwt.Time{Time: time.Date(1971, time.December, 24, 0, 0, 0, 0, time.Local)},
 		"nonce":    jwt.Nonce(8)(),
 	}
+
 	// создаем токен без подписи
 	token, err := jwt.Encode(claimset, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	fmt.Println("token:", token)
 }
 
 func ExampleConfig() {
 	// инициализируем шаблон с описанием основных полей токена
-	var conf = &jwt.Config{
+	conf := jwt.Config{
 		Issuer:   "http://test.example.com/auth",
 		Created:  true,                   // добавлять дату создания
 		Expires:  time.Hour,              // время жизни
@@ -130,6 +140,7 @@ func ExampleConfig() {
 		Private:  jwt.JSON{"temp": true}, // дополнительные поля
 		Key:      jwt.NewRS256Key(),      // ключ для подписи
 	}
+
 	// создаем токен с указанными полями
 	token, err := conf.Token(jwt.JSON{
 		"sub":      "938102384109384",
@@ -141,12 +152,13 @@ func ExampleConfig() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("token:", token)
+
+	fmt.Println(token)
 }
 
 func ExampleTime() {
 	// описываем структуру с данными, которые хотим распаковать из токена
-	var claimset = new(struct {
+	var claimset struct {
 		Issuer   string   `json:"iss"`
 		Subject  string   `json:"sub"`
 		Created  jwt.Time `json:"iat"`
@@ -155,11 +167,13 @@ func ExampleTime() {
 		Email    string
 		Birthday jwt.Time // время представлено числовом виде
 		Nonce    string
-	})
+	}
+
 	// извлекаем данные из токена
-	if err := jwt.Decode(token, claimset); err != nil {
+	if err := jwt.Decode(token, &claimset); err != nil {
 		log.Fatal(err)
 	}
+
 	fmt.Println(claimset.Birthday.UTC())
 	// Output: 1971-12-24 08:43:00 +0000 UTC
 }
