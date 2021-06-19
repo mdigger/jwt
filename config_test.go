@@ -7,7 +7,7 @@ import (
 )
 
 func TestConfig(t *testing.T) {
-	conf := &Config{
+	conf := Config{
 		Issuer:   "http://service.example.com/",
 		UniqueID: Nonce(8), // задаем функцию генерации случайного nonce
 		Key:      NewES256Key(),
@@ -26,7 +26,7 @@ func TestConfigFuncKey(t *testing.T) {
 		return NewES256Key()
 	}
 
-	conf := &Config{
+	conf := Config{
 		Issuer:   "http://service.example.com/",
 		UniqueID: Nonce(8), // задаем функцию генерации случайного nonce
 		Key:      keyFunc,
