@@ -8,9 +8,9 @@ import (
 	"github.com/mdigger/jwt"
 )
 
-var token string
+var secret = "my secret sign key"
 
-func init() {
+func GenerateTestToken() string {
 	claimset := jwt.JSON{
 		"iss":      "http://service.example.com/",
 		"sub":      "2934852845",
@@ -23,12 +23,12 @@ func init() {
 	}
 
 	var err error
-	token, err = jwt.Encode(claimset, "my secret sign key")
+	token, err := jwt.Encode(claimset, secret)
 	if err != nil {
 		panic(err)
 	}
 
-	// fmt.Println("test token:", token)
+	return token
 }
 
 func ExampleEncode() {
@@ -45,7 +45,7 @@ func ExampleEncode() {
 	}
 
 	// создаем токен с подписью HS256 с секретным ключом
-	token, err := jwt.Encode(claimset, "my secret sign key")
+	token, err := jwt.Encode(claimset, secret)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -54,6 +54,8 @@ func ExampleEncode() {
 }
 
 func ExampleDecode() {
+	token := GenerateTestToken()
+
 	// описываем структуру с данными, которые хотим распаковать из токена
 	var claimset struct {
 		Issuer   string   `json:"iss"`
@@ -75,8 +77,10 @@ func ExampleDecode() {
 }
 
 func ExampleVerify() {
+	token := GenerateTestToken()
+
 	// проверка подписи токена с простым ключом
-	if _, err := jwt.Verify(token, "my secret sign key"); err != nil {
+	if _, err := jwt.Verify(token, secret); err != nil {
 		log.Fatal(err)
 	}
 
@@ -86,8 +90,9 @@ func ExampleVerify() {
 		if alg != "HS256" || keyID != "" {
 			return nil
 		}
-		return []byte("my secret sign key")
+		return []byte(secret)
 	}
+
 	// вызываем проверку подписи с вызовом функции получения ключа
 	if _, err := jwt.Verify(token, getMyKey); err != nil {
 		log.Fatal(err)
@@ -157,6 +162,8 @@ func ExampleConfig() {
 }
 
 func ExampleTime() {
+	token := GenerateTestToken()
+
 	// описываем структуру с данными, которые хотим распаковать из токена
 	var claimset struct {
 		Issuer   string   `json:"iss"`
