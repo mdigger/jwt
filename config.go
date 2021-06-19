@@ -53,7 +53,7 @@ type Config struct {
 // для токенов указывать другие имена. Если имя поля не определено в теге, то
 // используется само имя поля, но первая его буква при этом становится строчной,
 // что больше соответствует формату JSON токена.
-func (c *Config) Token(claimset interface{}) (string, error) {
+func (c Config) Token(claimset interface{}) (string, error) {
 	// формируем содержимое токена
 	result := make(JSON)
 
