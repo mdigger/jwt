@@ -7,7 +7,7 @@ import "github.com/mdigger/jwt"
 
 // create a pattern and describe in it the things that we would like to
 // include all the tokens
-conf := &jwt.Config{
+conf := jwt.Config{
 	Issuer:  "me.mdigger.test",
 	Expires:  time.Hour,
 	Created: true,
@@ -27,9 +27,12 @@ if err != nil {
 	log.Fatalln("Error creating:", err)
 }
 
+// ---------------------------------------------------
+
 // parse a token and get data
 // if the token is not valid, then return an error
-if err := jwt.Decode(token, &data); err != nil {
+claim := make(jwt.JSON)
+if err := jwt.Decode(token, &claim); err != nil {
 	log.Fatalln("Error parsing:", err)
 }
 ```
